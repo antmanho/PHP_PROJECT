@@ -1,7 +1,7 @@
 <?php
 session_start();
+//$_SESSION['email_connecte'] = "invite@example.com";
 $email_connecte = $_SESSION['email_connecte'];
-//$email_connecte = "dced";
 //echo "wewe<br><br><br>" ;
 //echo $email_connecte;
 ?>
@@ -10,7 +10,8 @@ $email_connecte = $_SESSION['email_connecte'];
 <head>
     <title>Liste des tournois</title>
     
-<style>
+    <!-- Lier le fichier CSS -->
+    <style>
 body {
     background-color: #f4f4f4; /* Couleur de fond gris clair */
 }
@@ -156,12 +157,15 @@ h1 {
     font-size: 5vw; /* Par exemple, 3 fois la taille par défaut */
     margin: 0 auto; /* Pour centrer horizontalement */
 }
+
 </style>
     
 </head>
 <body>
 <br>
 <?php
+
+
 // Connexion à la base de données
 $servername = "localhost";
 $username = "admin";
@@ -176,7 +180,6 @@ if ($conn->connect_error) {
     die("La connexion a échoué : " . $conn->connect_error);
 }
 
-
 // Initialisation de la variable de recherche
 $search_query = "";
 
@@ -185,17 +188,20 @@ if(isset($_GET['search']) && !empty($_GET['search'])) {
     $search_query = $_GET['search'];
 }
 
-// Requête SQL de base pour récupérer les tournois qui font partis des tournois ou l'email connecté a fait une demande
-$sql = "SELECT t.*,
+$sql = "SELECT p.id_participation, p.numero_tournois, p.demandeur, p.participant, p.email, t.nom_tournois,
                COUNT(DISTINCT CASE WHEN p.participant = 1 THEN p.email END) AS nombre_participants
-        FROM TOURNOIS AS t
-        LEFT JOIN DEMANDE AS d ON t.id_tournois = d.numero_tournois
-        LEFT JOIN PARTICIPATION AS p ON t.id_tournois = p.numero_tournois
-        WHERE createur='$email_connecte'";
-        
-
-
-
+            FROM PARTICIPATION AS p
+            JOIN TOURNOIS AS t
+            ON t.id_tournois = p.numero_tournois
+            WHERE p.numero_tournois IN (
+                SELECT id_tournois FROM TOURNOIS WHERE createur = '$email_connecte')
+            AND NOT EXISTS (
+                SELECT 1
+                FROM DEMANDE d
+                WHERE d.numero_tournois = p.numero_tournois
+                AND d.demandeur = p.demandeur
+            )
+            AND p.demandeur=1";
 // Ajouter une condition WHERE pour filtrer les tournois publics si la case est cochée
 if(isset($_GET['public'])) {
     $sql .= " AND prive = 0";
@@ -236,13 +242,12 @@ if (!empty($search_query)) {
     $sql .= " AND (LOWER(nom_tournois) LIKE '%$search_query_lowercase%' OR LOWER(lieu_tournois) LIKE '%$search_query_lowercase%' OR LOWER(nom_activite) LIKE '%$search_query_lowercase%')";
 }
 
-$sql .= " GROUP BY t.id_tournois";
-
+$sql .= " GROUP BY p.id_participation, p.numero_tournois, p.demandeur, p.participant, p.email, t.nom_tournois "; // Ajout de GROUP BY
 
 // Ajouter la condition pour filtrer les tournois où le nombre de participants est inférieur au nombre maximum de places
-$sql .= " HAVING nombre_participants < place_maximum";
 
 $result = $conn->query($sql);
+
 echo '<br>';
 // Conteneur flexbox pour aligner les éléments côte à côte
 echo '<div style="display: flex; align-items: center;">';
@@ -295,53 +300,27 @@ echo '</div>';
 if ($result->num_rows > 0) {
     // Affichage des données sous forme de table avec 7 colonnes par ligne
     echo "<table border='1' style='width: 100%;background-color: white; '>";
-    echo "<tr><th>Nom</th><th>Date</th><th>Lieu</th><th>Contact</th><th>Info</th><th>Bouton</th></tr>";
+    echo "<tr><th>NOM</th><th>PRETENDANT</th><th>MESSAGERIE ANONYME</th><th>CHOIX</th></tr>";
     while($row = $result->fetch_assoc()) {
-        $cash_prize_class = ($row["cash_prize"] > 0) ? 'cash-prize' : ''; // Ajout de la classe si le cash prize est supérieur à 0
-        echo "<tr class='$cash_prize_class'>";
         
         echo "<td><br>" . $row["nom_tournois"] . "<br></td>";
         
-        echo "<td><br> " . $row["date_tournois"] . " <br>" . $row["h_tournois"] . "H" . $row["m_tournois"] . "</td>";
+        echo "<td><br>" . $row["email"] . "</td>" ;
         
-        echo "<td  class='buttons-column'> " . ($row["prive"] == 1 ? "PRIVE" : "<div class='container'><p id='texteACopier'>" . $row['lieu_tournois'] . "</p><button onclick='copierLieu()'> Copier </button></div>") . "</td>" ;
-        
-        echo "<td  class='buttons-column'>" . ($row["prive"] == 1 ? "<p> <br>PRIVE </p>" :  "<div class='container'><p id='texteACopier2'>" .  $row['numero_telephone'] . "</p>" . " ") . "<button onclick='copierNum()'> Copier </button></div></td>" ;
-        
-        echo "<td><br>" . $row["nombre_participants"] . "/" . $row["place_maximum"] . "   participants<br>" . ($row["cash_prize"] > 0 ? "(" . $row["cash_prize"] . "€ à gagner) <br>" : "<br>") ;
-        echo "<br><button style='height: 5vh; width: 100%;' onclick='showtout(" . $row['id_tournois'] . ", \"" . urlencode($email_connecte) . "\")'>Liste des participants</button></td>";
+        echo "<td>";
+    
+        // Création dynamique du bouton DISCUTER qui appelle la fonction submitMessForm(row)
+        echo '<button type="button" onclick="submitMessForm(' . htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') . ')" style="height: 10vh; width: 100%;"> DISCUTER </button>';
 
+        echo "</td>";
+        
         echo "<td>";
         
-        echo '<form id="annuler_demande" method="post" class="optional-fields" action="C4_supprimer.php"  style="margin-bottom: 0px;margin-top: 0px;">';
-        echo "      <input type='hidden' name='id_tournoi' value='" . $row["id_tournois"] . "'>
-                    <input type='hidden' name='email_connecte' value='" . $email_connecte . "'>";
-        
-        echo "<button type='submit' name='rejoindre' style='height: 6.8vh; width: 100%;'> SUPPRIMER </button>";
-        echo "</form>";
-        echo '<form id="modifie" method="post" class="optional-fields" action="C4_modifie.php"  style="margin-bottom: 0px;margin-top: 0px;">';
-        echo "  <input type='hidden' name='email_connecte' value='" . $email_connecte . "'>
-                    <input type='hidden' name='id_tournois' value='" . $row["id_tournois"] . "'>
-                    <input type='hidden' name='nom_tournois' value='" . $row["nom_tournois"] . "'>
-                    <input type='hidden' name='date_tournois' value='" . $row["date_tournois"] . "'>
-                    <input type='hidden' name='lieu_tournois' value='" . $row["lieu_tournois"] . "'>
-                    <input type='hidden' name='h_tournois' value='" . $row["h_tournois"] . "'>
-                    <input type='hidden' name='m_tournois' value='" . $row["m_tournois"] . "'>
-                    <input type='hidden' name='numero_telephone' value='" . $row["numero_telephone"] . "'>
-                    <input type='hidden' name='prive' value='" . $row["prive"] . "'>
-                    <input type='hidden' name='equipe' value='" . $row["equipe"] . "'>
-                    <input type='hidden' name='nbr_equipe' value='" . $row["nbr_equipe"] . "'>
-                    <input type='hidden' name='place_maximum' value='" . $row["place_maximum"] . "'>
-                    <input type='hidden' name='plus_info' value='" . $row["plus_info"] . "'>
-                    <input type='hidden' name='nom_activite' value='" . $row["nom_activite"] . "'>
-                    <input type='hidden' name='cash_prize' value='" . $row["cash_prize"] . "'>
-                    <input type='hidden' name='cout_tournois' value='" . $row["cout_tournois"] . "'>
-                    <input type='hidden' name='createur' value='" . $row["createur"] . "'>
-                    <input type='hidden' name='demander_numero' value='" . $row["demander_numero"] . "'>";
-                    
-        
-        echo "<button type='submit' name='modifie' style='height: 6.8vh; width: 100%;'> MODIFIER </button>";
-        echo "</form>";
+        echo '<button type="button" onclick="submitAccepterForm(' . htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') . ')" style="height: 5vh; width: 100%;">ACCEPTER</button>';
+
+        echo '<button type="button" onclick="submitRefuserForm(' . htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') . ')" style="height: 5vh; width: 100%;"> REFUSER </button>';
+
+
         echo "</td>";
         echo "</tr>";
     }
@@ -436,41 +415,98 @@ $conn->close();
 
         window.location.href = url;
     }
+function submitAccepterForm(row) {
+    // Création dynamique du formulaire avec les données de la ligne $row
+    var form = document.createElement('form');
+    form.setAttribute('id', 'accepterForm');
+    form.setAttribute('method', 'POST');
+    form.setAttribute('class', 'optional-fields');
+    form.setAttribute('action', 'C3_accepter.php');
 
-function showtout(tournoisId, email_connecte) {
-    // Requête AJAX pour récupérer la liste des participants avec leurs numéros d'accès
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function() {
-        if (this.readyState == 4 && this.status == 200) {
-            // Réponse de la requête
-            var participants = JSON.parse(this.responseText);
+    // Création d'éléments input pour les données de la ligne $row
+    var inputIdTournoi = document.createElement('input');
+    inputIdTournoi.setAttribute('type', 'hidden');
+    inputIdTournoi.setAttribute('name', 'id_tournoi');
+    inputIdTournoi.setAttribute('value', row['numero_tournois']);
+    form.appendChild(inputIdTournoi);
+    
+    var inputIdparticipation = document.createElement('input');
+    inputIdparticipation.setAttribute('type', 'hidden');
+    inputIdparticipation.setAttribute('name', 'id_participation'); // Assurez-vous que le nom correspond à celui attendu par votre script PHP
+    inputIdparticipation.setAttribute('value', row['id_participation']);
+    form.appendChild(inputIdparticipation);
+    
+    var inputEmail = document.createElement('input');
+    inputEmail.setAttribute('type', 'hidden');
+    inputEmail.setAttribute('name', 'email');
+    inputEmail.setAttribute('value', row['email']);
+    form.appendChild(inputEmail);
 
-            // Créer un message pour la pop-up
-            var popupContent = "Liste des participants:\n";
+    // Ajout du formulaire à la page et soumission
+    document.body.appendChild(form);
+    form.submit();
+}
 
-            // Ajouter chaque participant et son numéro d'accès au message
-            for (var i = 0; i < participants.length; i++) {
-                popupContent += " Email: " + participants[i].email;
-                if (participants[i].numero) {
-                    popupContent += "| Numéro : " + participants[i].numero;
-                }
-                popupContent += "\n";
-            }
+function submitRefuserForm(row) {
+    // Création dynamique du formulaire avec les données de la ligne $row
+    var form = document.createElement('form');
+    form.setAttribute('id', 'refuserForm');
+    form.setAttribute('method', 'POST');
+    form.setAttribute('class', 'optional-fields');
+    form.setAttribute('action', 'C3_refuser.php');
 
-            // Afficher la pop-up en utilisant une boîte de dialogue modale
-            window.alert(popupContent);
-        }
-    };
-    // Ajouter la valeur de email_connecte à la requête GET
-    xhttp.open("GET", "C4_tout.php?tournoisId=" + tournoisId + "&email_connecte=" + email_connecte, true);
-    xhttp.send();
+    // Création d'éléments input pour les données de la ligne $row
+    var inputIdTournoi = document.createElement('input');
+    inputIdTournoi.setAttribute('type', 'hidden');
+    inputIdTournoi.setAttribute('name', 'id_tournoi');
+    inputIdTournoi.setAttribute('value', row['numero_tournois']);
+    form.appendChild(inputIdTournoi);
+    
+    var inputIdparticipation = document.createElement('input');
+    inputIdparticipation.setAttribute('type', 'hidden');
+    inputIdparticipation.setAttribute('name', 'id_participation'); // Assurez-vous que le nom correspond à celui attendu par votre script PHP
+    inputIdparticipation.setAttribute('value', row['id_participation']);
+    form.appendChild(inputIdparticipation);
+    
+    var inputEmail = document.createElement('input');
+    inputEmail.setAttribute('type', 'hidden');
+    inputEmail.setAttribute('name', 'email');
+    inputEmail.setAttribute('value', row['email']);
+    form.appendChild(inputEmail);
+
+    // Ajout du formulaire à la page et soumission
+    document.body.appendChild(form);
+    form.submit();
 }
 
 
+function submitMessForm(row) {
+    // Création dynamique du formulaire
+    var form = document.createElement('form');
+    form.setAttribute('name', 'mess');
+    form.setAttribute('action', 'messagerie.php');
+    form.setAttribute('method', 'post');
+
+    // Création des champs de formulaire
+    var inputEmailConnecte = document.createElement('input');
+    inputEmailConnecte.setAttribute('type', 'hidden');
+    inputEmailConnecte.setAttribute('id', 'createur');
+    inputEmailConnecte.setAttribute('name', 'createur');
+    inputEmailConnecte.setAttribute('value', '<?php echo $email_connecte; ?>');
+    form.appendChild(inputEmailConnecte);
+
+    var inputPretendant = document.createElement('input');
+    inputPretendant.setAttribute('type', 'hidden');
+    inputPretendant.setAttribute('id', 'participant');
+    inputPretendant.setAttribute('name', 'participant');
+    inputPretendant.setAttribute('value', row['email']);
+    form.appendChild(inputPretendant);
 
 
-
-
+    // Ajout du formulaire à la page et soumission
+    document.body.appendChild(form);
+    form.submit();
+}
 
 </script>
 </body>

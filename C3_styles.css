@@ -1,0 +1,119 @@
+.container {
+  text-align: center;
+  margin-top: 50px;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Style pour les tournois avec cash prize */
+.cash-prize {
+    background-color: yellow;
+}
+/* Style de la boîte modale */
+.modal {
+    display: none; /* Par défaut, la boîte modale est cachée */
+    position: fixed; /* Position fixe pour la boîte modale */
+    z-index: 1; /* Mettre la boîte modale au-dessus de tout le reste */
+    left: 0;
+    top: 0;
+    width: 100%; /* Largeur pleine de la boîte modale */
+    height: 100%; /* Hauteur pleine de la boîte modale */
+    overflow: auto; /* Activer le défilement si nécessaire */
+    background-color: rgba(0,0,0,0.4); /* Fond sombre semi-transparent */
+}
+
+/* Contenu de la boîte modale */
+.modal-content {
+    background-color: #fefefe; /* Fond blanc de la boîte modale */
+    margin: 15% auto; /* Centrer la boîte modale verticalement */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; /* Largeur de la boîte modale */
+}
+
+/* Bouton de fermeture de la boîte modale */
+.close {
+    color: #aaaaaa; /* Couleur du texte */
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: #000; /* Couleur du texte lorsqu'il est survolé */
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Style du formulaire de filtrage */
+.optional-fields {
+    margin-bottom: 10px;
+}
+
+/* Style des champs de formulaire */
+.optional-fields input[type='checkbox'],
+.optional-fields input[type='number'],
+.optional-fields input[type='text'] {
+    margin-bottom: 5px;
+    width: 100%; /* Largeur pleine des champs */
+}
+
+/* Style du bouton de validation */
+.optional-fields input[type='submit'] {
+    background-color: #4CAF50; /* Couleur de fond verte */
+    color: white; /* Couleur du texte */
+    border: none;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+.optional-fields input[type='submit']:hover {
+    background-color: #45a049; /* Couleur de fond verte plus foncée lorsqu'il est survolé */
+}
+
+/* Style de la pop-up de filtre */
+.filter-popup {
+    display: none; /* Par défaut, la pop-up de filtre est cachée */
+    position: fixed; /* Position fixe pour la pop-up de filtre */
+    z-index: 1; /* Mettre la pop-up de filtre au-dessus de tout le reste */
+    left: 0;
+    top: 0;
+    width: 100%; /* Largeur pleine de la pop-up de filtre */
+    height: 100%; /* Hauteur pleine de la pop-up de filtre */
+    overflow: auto; /* Activer le défilement si nécessaire */
+    background-color: rgba(0,0,0,0.4); /* Fond sombre semi-transparent */
+}
+
+/* Contenu de la pop-up de filtre */
+.filter-content {
+    background-color: #fefefe; /* Fond blanc de la pop-up de filtre */
+    margin: 15% auto; /* Centrer la pop-up de filtre verticalement */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; /* Largeur de la pop-up de filtre */
+}
+
+/* Bouton de fermeture de la pop-up de filtre */
+.filter-close {
+    color: #aaaaaa; /* Couleur du texte */
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.filter-close:hover,
+.filter-close:focus {
+    color: #000; /* Couleur du texte lorsqu'il est survolé */
+    text-decoration: none;
+    cursor: pointer;
+}
